@@ -265,7 +265,9 @@ details[open] > summary { margin-bottom: 10px; }
             <div class="form">
               <div class="actions">
                 <input class="vh" type="file" id="var-file" accept="image/*" hidden>
-                <label class="btn btn-primary" id="var-photo-btn" for="var-file" hidden>Photo of chart variation</label>
+                <input class="vh" type="file" id="var-cam" accept="image/*" capture="environment" hidden>
+                <label class="btn btn-primary" id="var-cam-btn" for="var-cam" hidden>Take photo of chart</label>
+                <label class="btn" id="var-photo-btn" for="var-file" hidden>Choose from gallery</label>
                 <button class="btn" type="button" id="var-stop" hidden>Stop</button>
               </div>
               <p class="note" id="var-photo-note">Photograph the compass rose with the year and annual change in view. Check what was read against the chart.</p>
@@ -374,7 +376,9 @@ details[open] > summary { margin-bottom: 10px; }
           <p class="note" id="dev-intro">Looking for your saved table.</p>
           <div class="actions" style="margin-top:12px">
             <input class="vh" type="file" id="dev-file" accept="image/*" multiple hidden>
-            <label class="btn btn-primary" id="dev-photo-btn" for="dev-file" hidden>Photo of deviation card</label>
+            <input class="vh" type="file" id="dev-cam" accept="image/*" capture="environment" hidden>
+            <label class="btn btn-primary" id="dev-cam-btn" for="dev-cam" hidden>Take photo of card</label>
+            <label class="btn" id="dev-photo-btn" for="dev-file" hidden>Choose from gallery</label>
             <button class="btn btn-primary" type="button" id="dev-paste-btn" hidden>Paste scanned text</button>
             <button class="btn" type="button" id="dev-manual" hidden>Enter by hand</button>
             <button class="btn" type="button" id="dev-keep" hidden>Keep saved table</button>
@@ -820,19 +824,22 @@ details[open] > summary { margin-bottom: 10px; }
   function applyPhotoState() {
     var devHas = !!devTable;
     $('#var-photo-btn').hidden = !photoOK;
+    $('#var-cam-btn').hidden = !photoOK;
     $('#dev-photo-btn').hidden = !photoOK || devState === 'review' || devState === 'loading' || devState === 'reading';
+    $('#dev-cam-btn').hidden = $('#dev-photo-btn').hidden;
     $('#var-photo-note').textContent = !capsReady
       ? 'Checking whether photo reading is available.'
       : photoOK
         ? 'Photograph the compass rose or the ECDIS Chart Information screen, with the year and annual change in view. Check what was read.'
         : 'Photo reading needs a free Gemini key. Tap AI at the top to add one. You can also enter the values by hand.';
-    if (devHas && photoOK) $('#dev-photo-btn').textContent = 'Replace with photo';
-    else $('#dev-photo-btn').textContent = 'Photo of deviation card';
+    $('#dev-cam-btn').textContent = devHas ? 'Take new photo of card' : 'Take photo of card';
     $('#dev-paste-btn').classList.toggle('btn-primary', !photoOK);
     var off = busy;
-    ['#var-photo-btn', '#dev-photo-btn'].forEach(function (s) { $(s).classList.toggle('is-disabled', off); });
+    ['#var-photo-btn', '#dev-photo-btn', '#var-cam-btn', '#dev-cam-btn'].forEach(function (s) { $(s).classList.toggle('is-disabled', off); });
     $('#var-file').disabled = off;
     $('#dev-file').disabled = off;
+    $('#var-cam').disabled = off;
+    $('#dev-cam').disabled = off;
   }
   function errCopy(e) {
     var c = e && e.code;
@@ -1204,6 +1211,7 @@ details[open] > summary { margin-bottom: 10px; }
     setMsg('#dev-msg', notes.join(' ') + ' Check every row against your card, then save.', 'warn');
   });
   bindFile('#dev-file', readDevPhotos);
+  bindFile('#dev-cam', readDevPhotos);
 
   /* ---------- Variation ---------- */
   var curVar = null;
@@ -1294,6 +1302,7 @@ details[open] > summary { margin-bottom: 10px; }
   }
   $('#var-stop').addEventListener('click', function () { if (ctl) ctl.abort(); });
   bindFile('#var-file', readVarPhoto);
+  bindFile('#var-cam', readVarPhoto);
   $('#panel-var').addEventListener('input', function (ev) {
     if (ev.target && ev.target.type === 'file') return;
     $('#var-pill').hidden = true;
@@ -1550,7 +1559,7 @@ details[open] > summary { margin-bottom: 10px; }
           claudePhotos = true;
           claudeMax = lim.images.maxCount || 1;
           var accept = (lim.images.mediaTypes || []).join(',');
-          if (accept) { $('#var-file').accept = accept; $('#dev-file').accept = accept; }
+          if (accept) { $('#var-file').accept = accept; $('#dev-file').accept = accept; $('#var-cam').accept = accept; $('#dev-cam').accept = accept; }
         }
       }).catch(function () { /* no images */ });
     }).catch(function () { sample = null; }).then(function () {
