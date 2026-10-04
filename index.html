@@ -1,0 +1,1576 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}:root{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}</style>
+<title>Bridge Desk</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one hub screen of duty tiles; each tile opens a single-purpose tool view.
+   Instrument-panel look with a chart-room lamp accent. Dark first, since bridges run dark.
+   Night mode is a red-only palette that protects night vision on the dark watch. */
+:root {
+  --bg: #0c1318;
+  --surface: #131d24;
+  --surface-2: #1a2730;
+  --line: #2a3b46;
+  --fg: #e3ebee;
+  --muted: #8ea1ac;
+  --accent: #e2a948;
+  --accent-text: #e2a948;
+  --accent-ink: #1a1204;
+  --alert: #ff8f7a;
+  --font-display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #e8eef1;
+    --surface: #f7fafb;
+    --surface-2: #edf2f5;
+    --line: #c3d0d8;
+    --fg: #13222b;
+    --muted: #53697a;
+    --accent: #c98a14;
+    --accent-text: #7a4f00;
+    --accent-ink: #1c1200;
+    --alert: #b3261e;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #e8eef1;
+  --surface: #f7fafb;
+  --surface-2: #edf2f5;
+  --line: #c3d0d8;
+  --fg: #13222b;
+  --muted: #53697a;
+  --accent: #c98a14;
+  --accent-text: #7a4f00;
+  --accent-ink: #1c1200;
+  --alert: #b3261e;
+  color-scheme: light;
+}
+:root[data-mode="night"] {
+  --bg: #080000;
+  --surface: #120404;
+  --surface-2: #1b0707;
+  --line: #3d1313;
+  --fg: #ff6a60;
+  --muted: #d4544b;
+  --accent: #ff7a70;
+  --accent-text: #ff8a80;
+  --accent-ink: #1a0202;
+  --alert: #ffb0a8;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 400 15px/1.5 var(--font-body); }
+button, input, select { font: inherit; color: inherit; }
+h1, h2, h3, p { margin: 0; }
+h1, h2 { text-wrap: balance; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+
+.app { max-width: 980px; margin-inline: auto; padding-inline: 16px; padding-block: 12px 56px; }
+
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding-block: 10px 14px; border-bottom: 1px solid var(--line); }
+.brand { background: none; border: 0; padding: 4px 0; cursor: pointer; font: 600 22px/1 var(--font-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.clock { font: 500 13px/1 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font: 500 14px var(--font-body); color: var(--fg); transition: border-color 0.15s; text-align: center; }
+.btn:hover { border-color: var(--accent); }
+.btn[disabled], .btn.is-disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+.btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-text); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn-primary:hover { border-color: var(--fg); }
+.vh:focus-visible + .btn { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Hub */
+.hub-head { display: grid; gap: 6px; padding-block: 32px 20px; }
+.hub-head h1, .tool-head h1 { font: 600 clamp(36px, 8vw, 56px)/1 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.hub-head h1:focus, .tool-head h1:focus { outline: none; }
+.muted { color: var(--muted); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 12px; }
+.tile { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; text-align: left; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; color: var(--fg); }
+button.tile { cursor: pointer; transition: border-color 0.15s, background-color 0.15s; }
+button.tile:hover { border-color: var(--accent); background: var(--surface-2); }
+.tile.is-planned { color: var(--muted); border-style: dashed; background: transparent; }
+.glyph { width: 44px; height: 44px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+button.tile .glyph { color: var(--accent-text); }
+.tile-name { font: 600 26px/1.05 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.tile-desc { color: var(--muted); font-size: 14px; }
+.chip { margin-top: auto; font: 500 11px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip-ready { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* Tool view */
+.tool-head { display: grid; gap: 10px; justify-items: start; padding-block: 18px 20px; }
+.lede { max-width: 62ch; color: var(--muted); }
+.panels { display: grid; gap: 16px; }
+.panels > .is-setup { order: -1; }
+.panel { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+.panel.is-setup { border-color: var(--accent); }
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.panel h2 { font: 600 22px/1.1 var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+.pill { font: 500 11px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.pill.is-on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.split { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) { .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; } }
+.form { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.grid2 { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field > label, .legend { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); padding: 0; }
+.pair { display: flex; gap: 8px; align-items: stretch; }
+.pair input[type="number"] { flex: 1; min-width: 0; }
+input[type="number"] { width: 100%; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font: 500 18px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; min-height: 44px; }
+input[type="password"], input[type="text"] { width: 100%; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font: 500 16px/1.2 var(--font-mono); min-height: 44px; }
+.steps { margin: 0 0 14px 20px; display: grid; gap: 8px; max-width: 66ch; font-size: 15px; }
+select { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: 600 16px var(--font-mono); min-height: 44px; }
+.seg { position: relative; display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--surface-2); flex: none; }
+.seg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.seg label { display: flex; align-items: center; justify-content: center; padding: 0 14px; min-height: 44px; min-width: 44px; cursor: pointer; font: 600 15px var(--font-mono); letter-spacing: 0.04em; color: var(--muted); user-select: none; }
+.seg input:checked + label { background: var(--accent); color: var(--accent-ink); }
+.seg input:focus-visible + label { outline: 2px solid var(--accent-text); outline-offset: -3px; }
+.seg.fill { display: flex; }
+.seg.fill label { flex: 1; font-family: var(--font-body); font-weight: 500; font-size: 14px; padding-inline: 8px; }
+
+textarea { width: 100%; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font: 500 15px/1.4 var(--font-mono); min-height: 140px; resize: vertical; }
+#dev-paste-box { display: grid; gap: 12px; margin-top: 12px; }
+.note { font-size: 14px; color: var(--muted); max-width: 66ch; }
+.msg { min-height: 1.4em; margin-top: 10px; font-size: 14px; color: var(--muted); }
+.msg:empty { display: none; }
+.msg.bad { color: var(--alert); }
+.msg.warn { color: var(--accent-text); }
+.rule { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.foot { margin-top: 24px; max-width: 70ch; font-size: 13px; color: var(--muted); }
+
+/* Course results */
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+@media (min-width: 760px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stat { display: grid; gap: 4px; align-content: start; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }
+.stat .k { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.stat .big { font: 600 34px/1 var(--font-display); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .sub { font-size: 13px; color: var(--muted); }
+.stat.is-main { border-color: var(--accent); }
+.stat.is-main .big { color: var(--accent-text); }
+details { margin-top: 14px; }
+summary { cursor: pointer; font: 500 13px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); min-height: 32px; display: flex; align-items: center; }
+details[open] > summary { margin-bottom: 10px; }
+.working { display: grid; gap: 12px; }
+.working p { font-size: 14px; color: var(--muted); }
+
+.ladder { display: grid; gap: 2px; align-content: start; min-width: 0; }
+.course { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: baseline; gap: 8px 10px; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; }
+.course.is-known { border-color: var(--accent); }
+.course .code { font: 600 28px/1 var(--font-display); color: var(--muted); }
+.course.is-known .code { color: var(--accent-text); }
+.course .name { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.course .val { font: 500 26px/1 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tag { font: 500 10px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 6px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
+.corr { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: baseline; gap: 8px 10px; padding: 5px 14px; color: var(--muted); font-size: 13px; }
+.corr .arrow { font: 500 15px var(--font-mono); text-align: center; }
+.corr .delta { font: 500 14px var(--font-mono); color: var(--fg); white-space: nowrap; }
+
+.readout { display: grid; gap: 4px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.readout .k { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.readout .big { font: 600 40px/1 var(--font-display); letter-spacing: 0.02em; color: var(--accent-text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.readout .sub { color: var(--muted); font-size: 14px; }
+.results { display: grid; gap: 12px; align-content: start; min-width: 0; }
+
+/* Deviation table editor */
+.devrows { display: grid; gap: 6px; margin-block: 10px 12px; }
+.devrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 64px 44px; gap: 6px; align-items: center; }
+.devrow.is-head { font: 500 11px/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.icon-btn { min-height: 44px; min-width: 44px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font-size: 20px; line-height: 1; color: var(--muted); }
+.icon-btn:hover { border-color: var(--alert); color: var(--alert); }
+.devtable { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 14px; max-height: 320px; overflow-y: auto; font: 500 14px var(--font-mono); font-variant-numeric: tabular-nums; }
+.devtable span { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <button class="brand" id="home" type="button">Bridge Desk</button>
+    <div class="topbar-right">
+      <button class="btn" id="top-dev" type="button">Deviation card</button>
+      <button class="btn" id="top-ai" type="button">AI</button>
+      <span class="clock" id="utc" aria-label="UTC time">--:--:-- UTC</span>
+      <button class="btn" id="night" type="button" aria-pressed="false">Night</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hub -->
+    <section id="view-hub" aria-labelledby="hub-title">
+      <div class="hub-head">
+        <h1 id="hub-title" tabindex="-1">Duties</h1>
+        <p class="muted">Each tile opens one focused tool.</p>
+      </div>
+      <div class="tiles">
+        <button class="tile" type="button" data-open="compass">
+          <svg class="glyph" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="19"/><path d="M24 9v4M24 35v4M9 24h4M35 24h4"/><path d="M30 18l-4 8-8 4 4-8z"/></svg>
+          <span class="tile-name">Compass error</span>
+          <span class="tile-desc">Photo of the chart variation and your deviation card in. Variation, deviation, compass course and error out.</span>
+          <span class="chip chip-ready">Ready</span>
+        </button>
+        <div class="tile is-planned">
+          <svg class="glyph" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 38c10 0 6-14 16-14s6-14 16-14" stroke-dasharray="2 4"/><circle cx="8" cy="38" r="3"/><circle cx="24" cy="24" r="3"/><circle cx="40" cy="10" r="3"/></svg>
+          <span class="tile-name">Passage planning</span>
+          <span class="tile-desc">Legs, distances, ETAs, cross-track limits and under-keel checks.</span>
+          <span class="chip">Planned</span>
+        </div>
+        <div class="tile is-planned">
+          <svg class="glyph" viewBox="0 0 48 48" aria-hidden="true"><path d="M13 15h22l-2 25H15z"/><path d="M10 15h28M19 15v-4h10v4"/><path d="M21 21v13M27 21v13"/></svg>
+          <span class="tile-name">Garbage and MARPOL</span>
+          <span class="tile-desc">Annex V discharge rules by area and category. Garbage Record Book entries.</span>
+          <span class="chip">Planned</span>
+        </div>
+        <div class="tile is-planned">
+          <svg class="glyph" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="17"/><path d="M24 13v11l7 5"/></svg>
+          <span class="tile-name">Watchkeeping</span>
+          <span class="tile-desc">Handover checklist, COLREGs quick reference, bridge log wording.</span>
+          <span class="chip">Planned</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Compass error -->
+    <section id="view-compass" hidden aria-labelledby="compass-title">
+      <div class="tool-head">
+        <button class="btn" type="button" id="back">‹ Duties</button>
+        <h1 id="compass-title" tabindex="-1">Compass error</h1>
+        <p class="lede">Save your deviation card once. Then photograph the chart variation, enter the course, and read off variation, deviation, compass course and error.</p>
+      </div>
+
+      <div class="panels">
+        <!-- Variation -->
+        <section class="panel" id="panel-var" aria-labelledby="h-var">
+          <div class="panel-head">
+            <h2 id="h-var">Variation</h2>
+            <span class="pill" id="var-pill" hidden>Read from photo</span>
+          </div>
+          <div class="split">
+            <div class="form">
+              <div class="actions">
+                <input class="vh" type="file" id="var-file" accept="image/*" hidden>
+                <label class="btn btn-primary" id="var-photo-btn" for="var-file" hidden>Photo of chart variation</label>
+                <button class="btn" type="button" id="var-stop" hidden>Stop</button>
+              </div>
+              <p class="note" id="var-photo-note">Photograph the compass rose with the year and annual change in view. Check what was read against the chart.</p>
+              <p class="msg" id="var-read-msg" role="status"></p>
+              <div class="field">
+                <label for="var-deg">Charted variation</label>
+                <div class="pair">
+                  <input type="number" id="var-deg" inputmode="decimal" step="any" min="0" aria-label="Degrees" placeholder="deg" autocomplete="off">
+                  <input type="number" id="var-min" inputmode="decimal" step="any" min="0" aria-label="Minutes" placeholder="min" autocomplete="off">
+                  <div class="seg" role="radiogroup" aria-label="Charted variation direction">
+                    <input type="radio" id="var-dir-E" name="var-dir" value="E"><label for="var-dir-E">E</label>
+                    <input type="radio" id="var-dir-W" name="var-dir" value="W" checked><label for="var-dir-W">W</label>
+                  </div>
+                </div>
+              </div>
+              <div class="grid2">
+                <div class="field">
+                  <label for="var-y0">Year on chart</label>
+                  <input type="number" id="var-y0" inputmode="numeric" step="1" min="0" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="var-y1">Year now</label>
+                  <input type="number" id="var-y1" inputmode="numeric" step="1" min="0" autocomplete="off">
+                </div>
+              </div>
+              <div class="field">
+                <label for="var-rate">Annual change, minutes a year, toward</label>
+                <div class="pair">
+                  <input type="number" id="var-rate" inputmode="decimal" step="any" min="0" autocomplete="off">
+                  <div class="seg" role="radiogroup" aria-label="Annual change direction">
+                    <input type="radio" id="var-toward-E" name="var-toward" value="E"><label for="var-toward-E">E</label>
+                    <input type="radio" id="var-toward-W" name="var-toward" value="W"><label for="var-toward-W">W</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="results" aria-live="polite">
+              <div class="readout">
+                <span class="k">Variation now</span>
+                <span class="big" id="var-big">—</span>
+                <span class="sub" id="var-sub">Take a photo of the chart variation, or enter it by hand.</span>
+              </div>
+              <p class="msg" id="var-msg"></p>
+            </div>
+          </div>
+          <p class="rule">Annual change toward E or W is the way the variation moves each year. A chart bracket such as (8′E) is toward E. "Decreasing" on a West variation is also toward E. ECDIS shows West as negative, so a variation of −4° with a change of −7′ is 4°W moving 7′ a year toward W.</p>
+        </section>
+
+        <!-- Course and results -->
+        <section class="panel" id="panel-course" aria-labelledby="h-course">
+          <div class="panel-head"><h2 id="h-course">Course</h2></div>
+          <div class="form">
+            <div class="grid2">
+              <fieldset class="field">
+                <legend class="legend">I have the</legend>
+                <div class="seg fill" role="radiogroup" aria-label="Known course">
+                  <input type="radio" id="cr-known-T" name="cr-known" value="T" checked><label for="cr-known-T">True</label>
+                  <input type="radio" id="cr-known-C" name="cr-known" value="C"><label for="cr-known-C">Compass</label>
+                  <input type="radio" id="cr-known-M" name="cr-known" value="M"><label for="cr-known-M">Magnetic</label>
+                </div>
+              </fieldset>
+              <div class="field">
+                <label for="cr-course" id="cr-course-label">True course (°)</label>
+                <input type="number" id="cr-course" inputmode="decimal" step="any" min="0" max="360" autocomplete="off">
+              </div>
+            </div>
+          </div>
+
+          <div class="stats" aria-live="polite">
+            <div class="stat"><span class="k">Variation</span><span class="big" id="st-var">—</span><span class="sub" id="st-var-sub"></span></div>
+            <div class="stat"><span class="k">Deviation</span><span class="big" id="st-dev">—</span><span class="sub" id="st-dev-sub"></span></div>
+            <div class="stat is-main"><span class="k">Compass course</span><span class="big" id="st-cc">—</span><span class="sub" id="st-cc-sub"></span></div>
+            <div class="stat"><span class="k">Compass error</span><span class="big" id="st-err">—</span><span class="sub" id="st-err-sub"></span></div>
+          </div>
+          <p class="msg" id="cr-msg"></p>
+
+          <details>
+            <summary>Show working</summary>
+            <div class="working">
+              <div class="ladder" id="cr-ladder"></div>
+              <p id="cr-working"></p>
+            </div>
+          </details>
+          <details>
+            <summary>Enter deviation by hand</summary>
+            <div class="field">
+              <label for="cr-mdev">Deviation (°). Leave empty to use the saved table.</label>
+              <div class="pair">
+                <input type="number" id="cr-mdev" inputmode="decimal" step="any" min="0" autocomplete="off">
+                <div class="seg" role="radiogroup" aria-label="Deviation direction">
+                  <input type="radio" id="cr-mdir-E" name="cr-mdir" value="E" checked><label for="cr-mdir-E">E</label>
+                  <input type="radio" id="cr-mdir-W" name="cr-mdir" value="W"><label for="cr-mdir-W">W</label>
+                </div>
+              </div>
+            </div>
+          </details>
+          <p class="rule">Compass to True: add East, subtract West. True to Compass: subtract East, add West. Compass least, error east. Compass best, error west.</p>
+        </section>
+
+        <!-- Deviation table -->
+        <section class="panel" id="panel-dev" aria-labelledby="h-dev">
+          <div class="panel-head">
+            <h2 id="h-dev">Deviation table</h2>
+            <span class="pill" id="dev-pill">Loading</span>
+          </div>
+          <p class="note" id="dev-intro">Looking for your saved table.</p>
+          <div class="actions" style="margin-top:12px">
+            <input class="vh" type="file" id="dev-file" accept="image/*" multiple hidden>
+            <label class="btn btn-primary" id="dev-photo-btn" for="dev-file" hidden>Photo of deviation card</label>
+            <button class="btn btn-primary" type="button" id="dev-paste-btn" hidden>Paste scanned text</button>
+            <button class="btn" type="button" id="dev-manual" hidden>Enter by hand</button>
+            <button class="btn" type="button" id="dev-keep" hidden>Keep saved table</button>
+            <button class="btn" type="button" id="dev-edit" hidden>Edit table</button>
+            <button class="btn" type="button" id="dev-stop" hidden>Stop</button>
+          </div>
+          <p class="msg" id="dev-msg" role="status"></p>
+
+          <div id="dev-paste-box" hidden>
+            <p class="note">Scan the card with your phone, copy the text, then paste it below. On Android, open Google Lens, tap Text, then Select all and Copy. On iPhone, point the camera at the card, tap the Live Text icon, then Select All and Copy.</p>
+            <div class="field">
+              <label for="dev-paste">Scanned text</label>
+              <textarea id="dev-paste" rows="8" placeholder="Paste the scanned text here" autocomplete="off" spellcheck="false"></textarea>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" type="button" id="dev-paste-go">Read text</button>
+              <button class="btn" type="button" id="dev-paste-cancel">Cancel</button>
+            </div>
+          </div>
+
+          <div id="dev-review" hidden>
+            <fieldset class="field">
+              <legend class="legend">The table is by</legend>
+              <div class="seg fill" role="radiogroup" aria-label="Table basis">
+                <input type="radio" id="dev-basis-compass" name="dev-basis" value="compass" checked><label for="dev-basis-compass">Compass heading</label>
+                <input type="radio" id="dev-basis-magnetic" name="dev-basis" value="magnetic"><label for="dev-basis-magnetic">Magnetic heading</label>
+              </div>
+            </fieldset>
+            <div class="field">
+              <span class="legend">Fill in the headings for me</span>
+              <div class="actions" role="group" aria-label="Heading step">
+                <button class="btn" type="button" id="dev-step-10" data-step="10">Every 10°</button>
+                <button class="btn" type="button" id="dev-step-15" data-step="15">Every 15°</button>
+                <button class="btn" type="button" id="dev-step-30" data-step="30">Every 30°</button>
+                <button class="btn" type="button" id="dev-step-45" data-step="45">Every 45°</button>
+              </div>
+              <p class="note">Then type only the deviation for each heading and choose E or W. Rows you leave empty are skipped.</p>
+            </div>
+            <div class="devrows" id="dev-rows"></div>
+            <div class="actions">
+              <button class="btn" type="button" id="dev-add">Add row</button>
+              <button class="btn btn-primary" type="button" id="dev-save">Save table</button>
+              <button class="btn" type="button" id="dev-discard">Discard</button>
+            </div>
+          </div>
+
+          <details id="dev-view" hidden>
+            <summary>Show saved table</summary>
+            <div class="devtable" id="dev-saved"></div>
+          </details>
+          <p class="rule" id="dev-tip">Fill the frame with the table, hold the phone square to the card and avoid glare. If the table is long, pick two photos. Check every row before saving.</p>
+        </section>
+
+        <!-- Error from a bearing -->
+        <section class="panel" id="panel-obs" aria-labelledby="h-obs">
+          <div class="panel-head"><h2 id="h-obs">Error from a bearing</h2></div>
+          <div class="split">
+            <div class="form">
+              <fieldset class="field">
+                <legend class="legend">Compared instrument</legend>
+                <div class="seg fill" role="radiogroup" aria-label="Instrument">
+                  <input type="radio" id="ob-kind-mag" name="ob-kind" value="mag" checked><label for="ob-kind-mag">Magnetic compass</label>
+                  <input type="radio" id="ob-kind-gyro" name="ob-kind" value="gyro"><label for="ob-kind-gyro">Gyro</label>
+                </div>
+              </fieldset>
+              <div class="grid2">
+                <div class="field">
+                  <label for="ob-true">True bearing (°)</label>
+                  <input type="number" id="ob-true" inputmode="decimal" step="any" min="0" max="360" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="ob-obs" id="ob-obs-label">Compass bearing, observed (°)</label>
+                  <input type="number" id="ob-obs" inputmode="decimal" step="any" min="0" max="360" autocomplete="off">
+                </div>
+              </div>
+              <div class="field" id="ob-var-field">
+                <label for="ob-var">Variation (°), set from the variation above</label>
+                <div class="pair">
+                  <input type="number" id="ob-var" inputmode="decimal" step="any" min="0" autocomplete="off">
+                  <div class="seg" role="radiogroup" aria-label="Variation direction">
+                    <input type="radio" id="ob-vdir-E" name="ob-vdir" value="E"><label for="ob-vdir-E">E</label>
+                    <input type="radio" id="ob-vdir-W" name="ob-vdir" value="W" checked><label for="ob-vdir-W">W</label>
+                  </div>
+                </div>
+              </div>
+              <p class="note">True bearing comes from a sun or star azimuth, a charted transit, or ECDIS. Error is True minus observed.</p>
+            </div>
+            <div class="results" aria-live="polite">
+              <div class="readout">
+                <span class="k" id="ob-err-k">Total compass error</span>
+                <span class="big" id="ob-err">—</span>
+                <span class="sub" id="ob-err-sub"></span>
+              </div>
+              <div class="readout" id="ob-dev-box">
+                <span class="k">Deviation on this heading</span>
+                <span class="big" id="ob-dev">—</span>
+                <span class="sub" id="ob-dev-sub"></span>
+              </div>
+              <p class="msg" id="ob-msg"></p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <p class="foot">Calculation aid only. Photos are read by AI and can be misread, so check every value against the chart and the card. Results do not replace ECDIS or your Master's orders. Check results before they go in the log.</p>
+    </section>
+
+    <!-- AI settings -->
+    <section id="view-settings" hidden aria-labelledby="settings-title">
+      <div class="tool-head">
+        <button class="btn" type="button" id="back-settings">‹ Duties</button>
+        <h1 id="settings-title" tabindex="-1">AI settings</h1>
+        <p class="lede">Connect a free Google Gemini key so the app can read photos of your deviation card and the chart variation.</p>
+      </div>
+      <div class="panels">
+        <section class="panel" aria-labelledby="h-key">
+          <div class="panel-head">
+            <h2 id="h-key">Gemini key</h2>
+            <span class="pill" id="key-pill">Not set</span>
+          </div>
+          <ol class="steps">
+            <li>On a computer or your phone, open aistudio.google.com and sign in with a Google account.</li>
+            <li>Choose Get API key, then Create API key. No payment card is needed.</li>
+            <li>Copy the key. It is a long string starting with AIza.</li>
+            <li>Paste it below and tap Save key. Then tap Test key.</li>
+          </ol>
+          <div class="field">
+            <label for="key-input">Gemini API key</label>
+            <input type="password" id="key-input" autocomplete="off" spellcheck="false" placeholder="Paste key here">
+          </div>
+          <div class="field" style="margin-top:12px">
+            <label for="model-input">Model</label>
+            <input type="text" id="model-input" autocomplete="off" spellcheck="false" autocapitalize="none">
+          </div>
+          <p class="note">Use a Gemini Flash model with no Paid badge in AI Studio. Default is gemini-3.8-flash.</p>
+          <div class="actions" style="margin-top:12px">
+            <button class="btn btn-primary" type="button" id="key-save">Save key</button>
+            <button class="btn" type="button" id="key-test">Test key</button>
+            <button class="btn" type="button" id="key-remove">Remove key</button>
+          </div>
+          <p class="msg" id="key-msg" role="status"></p>
+          <p class="note">The key is stored only in this browser and is sent only to Google. Keep it private. Anyone with it can use your quota. Photos you scan go to Google, and on the free tier Google may use them to improve its products, so scan only things like the deviation card and chart.</p>
+        </section>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /*LOGIC-START*/
+  function norm360(x) { return ((x % 360) + 360) % 360; }
+  function round1(x) { return Math.round(x * 10) / 10; }
+  function round2(x) { return Math.round(x * 100) / 100; }
+  // Direction E is positive, W is negative.
+  function signedValue(v, dir) { return dir === 'W' ? -v : v; }
+  // True = Magnetic + Variation. Magnetic = Compass + Deviation. Compass error = Variation + Deviation.
+  function convertCourse(known, course, v, d) {
+    var T, M, C;
+    if (known === 'T') { T = course; M = T - v; C = M - d; }
+    else if (known === 'M') { M = course; T = M + v; C = M - d; }
+    else { C = course; M = C + d; T = M + v; }
+    return { T: norm360(T), M: norm360(M), C: norm360(C), error: v + d };
+  }
+  // Error = True - Observed, east positive, result within -180 to 180.
+  function observedError(trueBrg, observed) {
+    var e = norm360(trueBrg - observed);
+    if (e > 180) e -= 360;
+    return e;
+  }
+  // v0 is signed (E positive). toward is the way the variation moves each year, 'E' or 'W'.
+  function updateVariation(v0, annualMin, toward, years) {
+    return v0 + (toward === 'W' ? -1 : 1) * (annualMin / 60) * years;
+  }
+  function fmtCourse(x) { var r = norm360(round1(x)); return r.toFixed(1).padStart(5, '0') + '°'; }
+  function fmtSigned(e) { var r = round1(e); if (r === 0) return '0.0°'; return Math.abs(r).toFixed(1) + '° ' + (r > 0 ? 'E' : 'W'); }
+  function fmtDM(x) {
+    var total = Math.round(Math.abs(x) * 60);
+    var deg = Math.floor(total / 60);
+    var min = total % 60;
+    return deg + '°' + String(min).padStart(2, '0') + '′';
+  }
+  function dirOf(x) { return x < 0 ? 'W' : 'E'; }
+  // a - b as an angle within -180 to 180.
+  function angdiff(a, b) { var x = norm360(a - b); if (x > 180) x -= 360; return x; }
+
+  // Deviation at heading h from rows [{h, d}] sorted by h, d signed (E positive).
+  // Linear interpolation, wrapping through 360. Returns the bracket for display.
+  function devAt(rows, h) {
+    var n = rows.length;
+    h = norm360(h);
+    var i = -1, k;
+    for (k = 0; k < n; k++) if (rows[k].h <= h) i = k;
+    var h0, d0, h1, d1;
+    if (i === -1) { h0 = rows[n - 1].h - 360; d0 = rows[n - 1].d; h1 = rows[0].h; d1 = rows[0].d; }
+    else if (i === n - 1) { h0 = rows[i].h; d0 = rows[i].d; h1 = rows[0].h + 360; d1 = rows[0].d; }
+    else { h0 = rows[i].h; d0 = rows[i].d; h1 = rows[i + 1].h; d1 = rows[i + 1].d; }
+    var dev = h1 === h0 ? d0 : d0 + (d1 - d0) * (h - h0) / (h1 - h0);
+    return { dev: dev, h0: norm360(h0), d0: d0, h1: norm360(h1), d1: d1, exact: Math.abs(h - h0) < 1e-9 };
+  }
+  // Find x within 60 degrees of centre where g(x) = 0 (g returns an angle difference).
+  function solveNear(g, centre) {
+    var span = 60, step = 0.1, steps = Math.round(span * 2 / step);
+    var roots = [], x0 = centre - span, g0 = g(x0), i, x1, g1, a, b, ga, m, gm, kk;
+    for (i = 1; i <= steps; i++) {
+      x1 = centre - span + i * step; g1 = g(x1);
+      if (Math.abs(g0) < 90 && Math.abs(g1) < 90 && ((g0 <= 0 && g1 >= 0) || (g0 >= 0 && g1 <= 0))) {
+        a = x0; b = x1; ga = g0;
+        for (kk = 0; kk < 60; kk++) {
+          m = (a + b) / 2; gm = g(m);
+          if ((ga <= 0 && gm >= 0) || (ga >= 0 && gm <= 0)) { b = m; } else { a = m; ga = gm; }
+        }
+        roots.push((a + b) / 2);
+      }
+      x0 = x1; g0 = g1;
+    }
+    if (!roots.length) return null;
+    roots.sort(function (p, q) { return Math.abs(p - centre) - Math.abs(q - centre); });
+    var multiple = roots.length > 1 && roots.some(function (r) { return Math.abs(r - roots[0]) > 0.5; });
+    return { x: roots[0], multiple: multiple };
+  }
+  // table = {basis: 'compass'|'magnetic', rows}. v is signed variation. known is 'T', 'M' or 'C'.
+  // Variation and deviation are rounded to 0.1 first so the ladder adds up exactly as displayed.
+  function convertWithTable(known, course, v, table) {
+    var rows = table.rows, basis = table.basis;
+    v = round1(v);
+    var M, C, b, d, s, multiple = false, heading;
+    if (known === 'C') {
+      if (basis === 'compass') {
+        heading = course;
+      } else {
+        s = solveNear(function (m) { return angdiff(m - devAt(rows, m).dev, course); }, course);
+        if (!s) return null;
+        heading = s.x; multiple = s.multiple;
+      }
+      b = devAt(rows, heading); d = round1(b.dev);
+      C = course; M = C + d;
+    } else {
+      var Mv = known === 'T' ? course - v : course;
+      if (basis === 'magnetic') {
+        heading = Mv;
+      } else {
+        s = solveNear(function (c) { return angdiff(c + devAt(rows, c).dev, Mv); }, Mv);
+        if (!s) return null;
+        heading = s.x; multiple = s.multiple;
+      }
+      b = devAt(rows, heading); d = round1(b.dev);
+      M = Mv; C = M - d;
+    }
+    var T = known === 'T' ? course : M + v;
+    return { T: norm360(T), M: norm360(M), C: norm360(C), v: v, d: d, error: round1(v + d),
+             bracket: b, heading: norm360(heading), basis: basis, multiple: multiple };
+  }
+
+  // Tidy a table read from a photo: {basis, rows:[{heading, deviation}]} to {basis, rows:[{h, d}], issues}.
+  function cleanTable(raw) {
+    var issues = [], out = [], seen = {};
+    var basis = raw && raw.basis === 'magnetic' ? 'magnetic' : 'compass';
+    if (!raw || raw.basis === 'unknown' || !raw.basis) issues.push('The table does not say whether it is by compass or magnetic heading. Check the setting below.');
+    var list = raw && Array.isArray(raw.rows) ? raw.rows : [];
+    list.forEach(function (r) {
+      if (!r) return;
+      var h = Number(r.heading !== undefined ? r.heading : r.h), d = Number(r.deviation !== undefined ? r.deviation : r.d);
+      if (!isFinite(h) || !isFinite(d) || h < 0 || h > 360) return;
+      h = round2(norm360(h));
+      if (seen[h]) return;
+      seen[h] = true;
+      out.push({ h: h, d: round2(d) });
+    });
+    out.sort(function (a, b) { return a.h - b.h; });
+    return { basis: basis, rows: out, issues: issues };
+  }
+  // Tidy a variation read from a chart photo.
+  function cleanVariation(raw) {
+    var v = raw && raw.variation;
+    if (!v) return null;
+    var deg = Number(v.degrees), min = v.minutes === undefined || v.minutes === null ? 0 : Number(v.minutes);
+    var dir = String(v.direction || '').toUpperCase().charAt(0);
+    if (!isFinite(deg) || !isFinite(min) || deg < 0 || min < 0 || (dir !== 'E' && dir !== 'W')) return null;
+    var year = Number(raw.year);
+    if (!isFinite(year) || year < 1900 || year > 2200) year = null;
+    var ac = raw.annualChange || {};
+    var rate = Number(ac.minutes);
+    if (!isFinite(rate) || rate < 0) rate = null;
+    var toward = null, s = String(ac.sense || '');
+    if (s === 'toward_east') toward = 'E';
+    else if (s === 'toward_west') toward = 'W';
+    else if (s === 'increasing') toward = dir;
+    else if (s === 'decreasing') toward = dir === 'E' ? 'W' : 'E';
+    return { deg: deg, min: min, dir: dir, year: year, rate: rate, toward: toward, notes: String(raw.notes || '') };
+  }
+  // Check rows typed into the editor: [{h, mag, dir}] as strings. Returns signed rows plus errors and warnings.
+  function validateDraft(draft) {
+    var errors = [], warnings = [], out = [], seen = {};
+    draft.forEach(function (r, i) {
+      var hs = String(r.h).trim(), ds = String(r.mag).trim();
+      if (hs === '' && ds === '') return;
+      if (r.pre && ds === '') return;
+      var h = Number(hs), m = Number(ds);
+      if (hs === '' || !isFinite(h) || h < 0 || h > 360) { errors.push('Row ' + (i + 1) + ': the heading must be 0 to 360.'); return; }
+      if (ds === '' || !isFinite(m) || m < 0 || m > 45) { errors.push('Row ' + (i + 1) + ': the deviation must be 0 to 45.'); return; }
+      h = round2(norm360(h));
+      if (seen[h]) { errors.push('Heading ' + h + '° appears twice.'); return; }
+      seen[h] = true;
+      out.push({ h: h, d: round2(r.dir === 'W' ? -m : m) });
+    });
+    out.sort(function (a, b) { return a.h - b.h; });
+    if (out.length < 2) errors.push('Enter at least two rows.');
+    else {
+      var maxGap = 0, i2;
+      for (i2 = 0; i2 < out.length; i2++) {
+        var nx = i2 === out.length - 1 ? out[0].h + 360 : out[i2 + 1].h;
+        if (nx - out[i2].h > maxGap) maxGap = nx - out[i2].h;
+      }
+      if (maxGap > 60) warnings.push('There is a gap of ' + Math.round(maxGap) + '° between rows. Deviation there is a straight line between its neighbours.');
+      if (out.length < 8) warnings.push('Only ' + out.length + ' rows. Interpolation will be rough.');
+    }
+    return { rows: out, errors: errors, warnings: warnings };
+  }
+  // Current variation (signed, E positive) from chart values. p = {deg, min, dir, y0, y1, rate, toward}
+  function variationNow(p) {
+    var v0 = signedValue(p.deg + p.min / 60, p.dir);
+    var years = (p.y0 === null || p.y1 === null) ? 0 : p.y1 - p.y0;
+    var rate = p.rate === null ? 0 : p.rate;
+    if (rate === 0 || years === 0 || !p.toward) return v0;
+    return updateVariation(v0, rate, p.toward, years);
+  }
+  // Read text copied from a phone scanner (Google Lens, Live Text) into table rows [{h, mag, dir}].
+  // Handles one row per line, several rows per line, headings and deviations in separate columns,
+  // degrees and minutes, decimal commas, E/W letters before or after the number, and +/- signs.
+  function parseScannedTable(text) {
+    var rows = [], singles = [], devs = [], skipped = 0, mode = 'rows';
+    String(text || '').split(/\r?\n/).forEach(function (raw) {
+      var s = raw.replace(/[º˚]/g, '°').replace(/[′’´ʹ`]/g, "'").replace(/[−–—]/g, '-').replace(/(\d),(\d)/g, '$1.$2');
+      s = s.replace(/(\d+)\s*°\s*(\d{1,2}(?:\.\d+)?)\s*'/g, function (m, d, mi) { return String(round2(Number(d) + Number(mi) / 60)); });
+      s = s.replace(/(\d+(?:\.\d+)?)\s*'/g, function (m, mi) { return String(round2(Number(mi) / 60)); });
+      s = s.replace(/°/g, ' ').replace(/(\d)([A-Za-z])/g, '$1 $2').replace(/([A-Za-z])(\d)/g, '$1 $2').replace(/(\d)-(\d)/g, '$1 $2');
+      var toks = [];
+      s.split(/[\s\/|;:(),]+/).forEach(function (p) {
+        if (!p) return;
+        if (/^[+-]?\d+(\.\d+)?$/.test(p)) toks.push({ t: 'n', v: Math.abs(Number(p)), sign: p.charAt(0) === '-' ? '-' : p.charAt(0) === '+' ? '+' : '' });
+        else if (/^(east|west|e|w)$/i.test(p)) toks.push({ t: 'd', v: p.charAt(0).toUpperCase() });
+      });
+      var found = 0, i = 0;
+      while (i < toks.length) {
+        var a = toks[i], j = i + 1, dir = null;
+        if (a.t === 'n' && j < toks.length && (toks[j].t === 'n' || (toks[j].t === 'd' && j + 1 < toks.length && toks[j + 1].t === 'n'))) {
+          if (toks[j].t === 'd') { dir = toks[j].v; j++; }
+          var dv = toks[j]; j++;
+          if (!dir && j < toks.length && toks[j].t === 'd') { dir = toks[j].v; j++; }
+          if (!dir && dv.sign) dir = dv.sign === '-' ? 'W' : 'E';
+          if (a.v <= 360 && dv.v <= 45) { rows.push({ h: a.v, mag: dv.v, dir: dir }); found++; } else skipped++;
+          i = j;
+        } else i++;
+      }
+      if (!found) {
+        var nums = toks.filter(function (x) { return x.t === 'n'; });
+        var dirs = toks.filter(function (x) { return x.t === 'd'; });
+        if (nums.length === 1) {
+          if (dirs.length || nums[0].sign) { if (nums[0].v <= 45) devs.push({ mag: nums[0].v, dir: dirs.length ? dirs[0].v : (nums[0].sign === '-' ? 'W' : 'E') }); }
+          else singles.push(nums[0].v);
+        }
+      }
+    });
+    if (rows.length < 2 && devs.length >= 2) {
+      var heads = singles.filter(function (h) { return h <= 360; });
+      if (heads.length === devs.length) {
+        mode = 'columns';
+        heads.forEach(function (h, k) { rows.push({ h: h, mag: devs[k].mag, dir: devs[k].dir }); });
+      }
+    }
+    var withDir = rows.filter(function (r) { return r.dir; }).length;
+    if (withDir >= 2 && withDir >= rows.length * 0.6) {
+      skipped += rows.length - withDir;
+      rows = rows.filter(function (r) { return r.dir; });
+    }
+    var noDir = 0;
+    rows.forEach(function (r) { if (!r.dir) { r.dir = 'E'; noDir++; } });
+    var all = String(text || '');
+    var byC = /by\s+compass|compass\s+head|compass\s+course/i.test(all);
+    var byM = /by\s+magnetic|magnetic\s+head|magnetic\s+course/i.test(all);
+    var basis = byC && !byM ? 'compass' : byM && !byC ? 'magnetic' : 'unknown';
+    return { rows: rows, noDir: noDir, skipped: skipped, mode: mode, basis: basis };
+  }
+  /*LOGIC-END*/
+
+  var DEV_PROMPT = "You are reading a photo of a ship's magnetic compass deviation table (the deviation card) for a navigating officer. The photo may show the whole card or part of a long table. If two photos are attached they are parts of the same table.\n\n" +
+    "Reply with only one JSON object and no other text:\n" +
+    '{"basis":"compass"|"magnetic"|"unknown","rows":[{"heading":number,"deviation":number}],"notes":string}\n\n' +
+    "Rules:\n" +
+    "- heading is the ship's head in degrees (0 to 360) exactly as printed in the table.\n" +
+    '- basis is "compass" when the headings are ship\'s head by compass, "magnetic" when they are magnetic headings, "unknown" if the table does not say.\n' +
+    "- deviation is in degrees, East positive and West negative. Convert degrees and minutes to decimal degrees (1°30′ is 1.5). If the table has separate E and W columns, use the column the number sits in.\n" +
+    "- Include every row you can read. Never guess or fill in a value you cannot read clearly. Leave that row out and say so in notes.\n" +
+    "- If the card shows more than one compass (for example standard and steering), read the standard magnetic compass and say which in notes.\n" +
+    "- notes is one short sentence or an empty string.";
+  var VAR_PROMPT = "This is a photo of a compass rose on a nautical chart, shown to a navigating officer who needs the printed magnetic variation.\n\n" +
+    "Reply with only one JSON object and no other text:\n" +
+    '{"variation":{"degrees":number,"minutes":number,"direction":"E"|"W"},"year":number,"annualChange":{"minutes":number,"sense":"increasing"|"decreasing"|"toward_east"|"toward_west"|"unknown"},"notes":string}\n\n' +
+    "Rules:\n" +
+    '- Read the variation exactly as printed. For example 3°10′W gives degrees 3, minutes 10, direction "W".\n' +
+    "- year is the year the variation is stated for, for example 2015.\n" +
+    '- annualChange is the yearly change printed beside it. Text such as "annual decrease 7′" or "decreasing 7′" gives minutes 7 and sense "decreasing". A bracket such as (8′E) means the change is toward east: minutes 8 and sense "toward_east". Use "unknown" if no annual change is printed.\n' +
+    '- The photo may be an ECDIS Chart Information screen with rows such as "Reference year for magnetic variation", "Value of annual change in magnetic variation" and "Value of magnetic variation". There a negative value means west. For example variation -4° with annual change -7′ gives degrees 4, direction "W", minutes 7 and sense "toward_west". A positive annual change gives "toward_east". Report degrees and minutes without the minus sign.\n' +
+    "- If the photo shows more than one compass rose, use the one nearest the centre of the photo and say in notes that there were several.\n" +
+    "- If you cannot read a field, leave it out of the JSON and say so in notes.\n" +
+    "- notes is one short sentence or an empty string.";
+
+  var $ = function (s) { return document.querySelector(s); };
+  function checked(name) {
+    var el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : null;
+  }
+  function setText(sel, t) { $(sel).textContent = t; }
+  function setMsg(sel, text, cls) {
+    var el = $(sel);
+    el.textContent = text || '';
+    el.className = 'msg' + (cls ? ' ' + cls : '');
+  }
+  function readField(el, label, max, switchHint) {
+    var raw = el.value.trim();
+    if (raw === '') return { state: 'empty' };
+    var n = Number(raw);
+    if (!isFinite(n)) return { state: 'bad', msg: label + ' is not a number.' };
+    if (n < 0) return { state: 'bad', msg: switchHint ? label + ': use the E/W switch, not a minus sign.' : label + ' cannot be negative.' };
+    if (n > max) return { state: 'bad', msg: label + ' must be ' + max + ' or less.' };
+    return { state: 'ok', value: n };
+  }
+  function firstBad(list) { return list.filter(function (x) { return x.state === 'bad'; })[0]; }
+  function sign(x) { return round1(x) < 0 ? '−' : '+'; }
+
+  /* ---------- Claude photo reading ---------- */
+  var sample = null, photoOK = false, claudePhotos = false, claudeMax = 1, maxImages = 1, ctl = null, busy = false, photoWhy = '', capsReady = false;
+  var gemKey = '';
+  try { gemKey = localStorage.getItem('bridge-desk-gemini') || ''; } catch (e) { gemKey = ''; }
+  function updatePhotoOK() {
+    photoOK = !!gemKey || claudePhotos;
+    maxImages = gemKey ? 3 : claudeMax;
+  }
+
+  function applyPhotoState() {
+    var devHas = !!devTable;
+    $('#var-photo-btn').hidden = !photoOK;
+    $('#dev-photo-btn').hidden = !photoOK || devState === 'review' || devState === 'loading' || devState === 'reading';
+    $('#var-photo-note').textContent = !capsReady
+      ? 'Checking whether photo reading is available.'
+      : photoOK
+        ? 'Photograph the compass rose or the ECDIS Chart Information screen, with the year and annual change in view. Check what was read.'
+        : 'Photo reading needs a free Gemini key. Tap AI at the top to add one. You can also enter the values by hand.';
+    if (devHas && photoOK) $('#dev-photo-btn').textContent = 'Replace with photo';
+    else $('#dev-photo-btn').textContent = 'Photo of deviation card';
+    $('#dev-paste-btn').classList.toggle('btn-primary', !photoOK);
+    var off = busy;
+    ['#var-photo-btn', '#dev-photo-btn'].forEach(function (s) { $(s).classList.toggle('is-disabled', off); });
+    $('#var-file').disabled = off;
+    $('#dev-file').disabled = off;
+  }
+  function errCopy(e) {
+    var c = e && e.code;
+    if (c === 'not_granted' || c === 'sampling_disabled' || c === 'not_declared' || c === 'capability_disabled') {
+      claudePhotos = false; updatePhotoOK();
+      return 'Claude is not allowed for this page, so photos cannot be read. Enter the values by hand.';
+    }
+    if (c === 'rate_limited') return 'Too many requests, or your Claude usage limit is reached. Try again later.';
+    if (c === 'image_rejected' || c === 'images_unavailable') return 'That photo could not be used. Try a JPEG or PNG.';
+    if (c === 'invalid_json' || c === 'empty_completion' || c === 'refused') return 'Nothing readable came back. Retake the photo closer and square on, or enter the values by hand.';
+    if (c === 'gem_key') return 'Google did not accept the key. Open AI at the top, check the key and tap Test key.';
+    if (c === 'gem_network') return 'Could not reach Google. Check your connection. If you are online, this page may be blocked from reaching outside services.';
+    if (c === 'gem_unreadable') return 'Nothing readable came back. Retake the photo closer and square on, or enter the values by hand.';
+    if (c === 'session_expired') return 'Sign in again, then retry.';
+    return 'Reading the photo failed. Try again, or enter the values by hand.';
+  }
+  function prepImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+          var cv = document.createElement('canvas');
+          cv.width = Math.max(1, Math.round(img.naturalWidth * scale));
+          cv.height = Math.max(1, Math.round(img.naturalHeight * scale));
+          cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+          cv.toBlob(function (b) { URL.revokeObjectURL(url); b ? resolve(b) : reject({ code: 'image_rejected' }); }, 'image/jpeg', 0.9);
+        } catch (e) { URL.revokeObjectURL(url); reject({ code: 'image_rejected' }); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject({ code: 'image_rejected' }); };
+      img.src = url;
+    });
+  }
+  function blobToB64(b) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(String(r.result).split(',')[1] || ''); };
+      r.onerror = function () { rej({ code: 'image_rejected' }); };
+      r.readAsDataURL(b);
+    });
+  }
+  var gemModel = 'gemini-3.8-flash';
+  try { gemModel = localStorage.getItem('bridge-desk-gemini-model') || gemModel; } catch (e) { /* optional */ }
+  function gemModels() { return [gemModel, 'gemini-3.7-flash', 'gemini-flash-latest'].filter(function (m, i, a) { return a.indexOf(m) === i; }); }
+  function gemCall(model, parts, signal) {
+    return fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': gemKey },
+      body: JSON.stringify({ contents: [{ parts: parts }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } }),
+      signal: signal
+    });
+  }
+  function gemRun(parts, signal) {
+    var i = 0;
+    function attempt() {
+      return gemCall(gemModels()[i], parts, signal).then(function (r) {
+        if (r.status === 404 && i < gemModels().length - 1) { i++; return attempt(); }
+        if (r.status === 400 || r.status === 401 || r.status === 403) {
+          return r.text().then(function (t) {
+            throw { code: /API key|API_KEY|permission|PERMISSION/i.test(t) || r.status !== 400 ? 'gem_key' : 'gem_unreadable', detail: t };
+          });
+        }
+        if (r.status === 429) throw { code: 'rate_limited' };
+        if (!r.ok) throw { code: 'gem_failed', status: r.status };
+        return r.json();
+      });
+    }
+    return attempt().catch(function (e) {
+      if (e && e.name === 'AbortError') throw { code: 'cancelled' };
+      if (e && e.code) throw e;
+      throw { code: 'gem_network' };
+    });
+  }
+  function gemText(j) {
+    var c = j && j.candidates && j.candidates[0];
+    var parts = c && c.content && c.content.parts || [];
+    return parts.map(function (p) { return p.text || ''; }).join('');
+  }
+  function askGemini(prompt, blobs, signal) {
+    return Promise.all(blobs.map(blobToB64)).then(function (b64s) {
+      var parts = [{ text: prompt }];
+      b64s.forEach(function (d) { parts.push({ inline_data: { mime_type: 'image/jpeg', data: d } }); });
+      return gemRun(parts, signal);
+    }).then(function (j) {
+      var t = gemText(j).replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '').trim();
+      try { return JSON.parse(t); } catch (e) { throw { code: 'gem_unreadable' }; }
+    });
+  }
+  function askWithPhotos(prompt, files) {
+    return Promise.all(files.slice(0, maxImages).map(prepImage)).then(function (blobs) {
+      ctl = new AbortController();
+      if (gemKey) return askGemini(prompt, blobs, ctl.signal);
+      return sample.json(prompt, { images: blobs, signal: ctl.signal, cache: false });
+    });
+  }
+  function bindFile(inputSel, handler) {
+    var el = $(inputSel);
+    el.addEventListener('change', function () {
+      var files = el.files ? Array.prototype.slice.call(el.files) : [];
+      el.value = '';
+      if (files.length && photoOK && !busy) handler(files);
+    });
+  }
+
+  /* ---------- Saved deviation table ---------- */
+  var devTable = null, devState = 'loading', draft = null, storeRef = null, savedWhere = '';
+  // A deviation table Claude builds into the page from a photo sent in chat: {basis, rows:[{h, d}]}. Null until then.
+  var SEED_TABLE = null;
+  var pasteOpen = false, changing = false;
+
+  function validStored(data) {
+    if (!data || !Array.isArray(data.rows)) return null;
+    var t = cleanTable({ basis: data.basis, rows: data.rows.map(function (r) { return { heading: r && r.h, deviation: r && r.d }; }) });
+    return t.rows.length >= 2 ? { basis: t.basis, rows: t.rows } : null;
+  }
+  var needReset = false;
+  try {
+    if (!localStorage.getItem('bridge-desk-reset-1')) {
+      needReset = true;
+      localStorage.removeItem('bridge-desk-dev');
+      localStorage.setItem('bridge-desk-reset-1', '1');
+    }
+  } catch (e) { needReset = false; }
+  function loadTable() {
+    var uc = window.claude && window.claude.use ? window.claude : null;
+    var p = Promise.resolve(null);
+    if (uc) {
+      p = Promise.all([uc.use('user'), uc.use('db')]).then(function (r) {
+        var user = r[0], db = r[1];
+        if (!user || !db) return null;
+        return user.id().then(function (uid) {
+          if (!uid) return null;
+          storeRef = db.doc('data/users/' + uid + '/deviation');
+          if (needReset) return storeRef.delete().then(function () { return null; });
+          return storeRef.get().then(function (snap) { return snap.exists ? validStored(snap.data()) : null; });
+        });
+      }).catch(function () { storeRef = null; return null; });
+    }
+    return p.then(function (t) {
+      if (t) { savedWhere = 'account'; return t; }
+      var t2 = null;
+      try {
+        var raw = localStorage.getItem('bridge-desk-dev');
+        t2 = raw ? validStored(JSON.parse(raw)) : null;
+        if (t2) savedWhere = 'device';
+      } catch (e) { t2 = null; }
+      if (!t2 && SEED_TABLE) { t2 = validStored(SEED_TABLE); if (t2) savedWhere = 'page'; }
+      return t2;
+    });
+  }
+  function saveTable(t) {
+    var body = { basis: t.basis, rows: t.rows, savedAt: new Date().toISOString() };
+    var first = storeRef ? storeRef.set(body).then(function () { return 'account'; }) : Promise.reject();
+    return first.catch(function () {
+      try { localStorage.setItem('bridge-desk-dev', JSON.stringify(body)); return 'device'; } catch (e) { return 'none'; }
+    });
+  }
+
+  function rowEl(tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; }
+  function renderDraft(focusLast) {
+    var host = $('#dev-rows');
+    host.textContent = '';
+    var head = rowEl('div', 'devrow is-head');
+    var hl = draft.basis === 'magnetic' ? 'Magnetic head' : 'Compass head';
+    [hl, 'Deviation', '', ''].forEach(function (t) { var s = rowEl('span'); s.textContent = t; head.appendChild(s); });
+    host.appendChild(head);
+    draft.rows.forEach(function (r, i) {
+      var row = rowEl('div', 'devrow');
+      var h = rowEl('input'); h.type = 'number'; h.id = 'dr-h-' + i; h.setAttribute('inputmode', 'decimal'); h.step = 'any'; h.min = '0'; h.max = '360';
+      h.setAttribute('aria-label', 'Heading, row ' + (i + 1)); h.value = r.h;
+      h.addEventListener('input', function () { r.h = h.value; });
+      var m = rowEl('input'); m.type = 'number'; m.id = 'dr-m-' + i; m.setAttribute('inputmode', 'decimal'); m.step = 'any'; m.min = '0';
+      m.setAttribute('aria-label', 'Deviation, row ' + (i + 1)); m.value = r.mag;
+      m.addEventListener('input', function () { r.mag = m.value; });
+      m.addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        var nx = $('#dr-m-' + (i + 1));
+        if (nx) nx.focus();
+      });
+      var sel = rowEl('select'); sel.id = 'dr-d-' + i; sel.setAttribute('aria-label', 'Deviation direction, row ' + (i + 1));
+      ['E', 'W'].forEach(function (d) { var o = rowEl('option'); o.value = d; o.textContent = d; sel.appendChild(o); });
+      sel.value = r.dir;
+      sel.addEventListener('change', function () { r.dir = sel.value; });
+      var del = rowEl('button', 'icon-btn'); del.type = 'button'; del.id = 'dr-x-' + i; del.textContent = '×'; del.setAttribute('aria-label', 'Remove row ' + (i + 1));
+      del.addEventListener('click', function () { draft.rows.splice(i, 1); renderDraft(false); });
+      row.appendChild(h); row.appendChild(m); row.appendChild(sel); row.appendChild(del);
+      host.appendChild(row);
+    });
+    if (focusLast && draft.rows.length) $('#dr-h-' + (draft.rows.length - 1)).focus();
+  }
+  function renderSavedTable() {
+    var host = $('#dev-saved');
+    host.textContent = '';
+    if (!devTable) return;
+    devTable.rows.forEach(function (r) {
+      var s = rowEl('span');
+      var a = rowEl('span'); a.textContent = fmtCourse(r.h);
+      var b = rowEl('span'); b.textContent = fmtSigned(r.d);
+      s.appendChild(a); s.appendChild(b);
+      host.appendChild(s);
+    });
+  }
+  function renderDev() {
+    var st = devState;
+    var panel = $('#panel-dev');
+    panel.classList.toggle('is-setup', st === 'empty' || st === 'review' || st === 'reading');
+    var pill = $('#dev-pill');
+    pill.classList.toggle('is-on', st === 'saved');
+    $('#dev-review').hidden = st !== 'review';
+    $('#dev-view').hidden = st !== 'saved';
+    $('#dev-manual').hidden = !(st === 'empty');
+    $('#dev-keep').hidden = !(st === 'empty' && changing && devTable);
+    $('#dev-paste-btn').hidden = !(st === 'empty' || st === 'saved');
+    $('#dev-paste-box').hidden = !(pasteOpen && (st === 'empty' || st === 'saved'));
+    $('#dev-edit').hidden = st !== 'saved';
+    $('#dev-stop').hidden = st !== 'reading';
+    $('#dev-tip').hidden = !(photoOK && (st === 'empty' || st === 'saved' || st === 'reading'));
+    if (st === 'loading') {
+      pill.textContent = 'Loading';
+      setText('#dev-intro', 'Looking for your saved table.');
+    } else if (st === 'empty') {
+      pill.textContent = 'Not saved';
+      setText('#dev-intro', photoOK
+        ? (changing ? 'Choose how to replace your deviation card, or keep the saved one.' : 'Start here. Take a photo of your compass deviation card once. It is saved and used for every course after that.')
+        : 'Start here. Scan your deviation card with your phone and paste the text here, or enter it by hand. It is saved and used for every course after that.');
+    } else if (st === 'reading') {
+      pill.textContent = 'Reading';
+      setText('#dev-intro', 'Reading the photo. This can take up to a minute.');
+    } else if (st === 'review') {
+      pill.textContent = 'Check and save';
+      setText('#dev-intro', 'Check every row against your card, fix anything wrong, then save.');
+    } else {
+      pill.textContent = 'Saved · ' + devTable.rows.length + ' rows';
+      var by = devTable.basis === 'magnetic' ? 'magnetic heading' : 'compass heading';
+      var where = savedWhere === 'device' ? ' Saved on this device only.' : savedWhere === 'page' ? ' Built into this page.' : '';
+      setText('#dev-intro', 'Your table is by ' + by + '.' + where);
+      renderSavedTable();
+    }
+    applyPhotoState();
+  }
+  function startDraft(t) {
+    draft = {
+      basis: t.basis,
+      rows: t.rows.map(function (r) { return { h: String(r.h), mag: String(Math.abs(r.d)), dir: r.d < 0 ? 'W' : 'E' }; })
+    };
+    if (!draft.rows.length) draft.rows.push({ h: '', mag: '', dir: 'E' });
+    $('#dev-basis-' + draft.basis).checked = true;
+    renderDraft(false);
+  }
+
+  function readDevPhotos(files) {
+    var prev = devState;
+    busy = true; devState = 'reading';
+    setMsg('#dev-msg', '');
+    renderDev();
+    askWithPhotos(DEV_PROMPT, files).then(function (raw) {
+      var t = cleanTable(raw);
+      busy = false;
+      if (t.rows.length < 2) {
+        devState = prev;
+        renderDev();
+        setMsg('#dev-msg', 'No table rows could be read. Retake the photo closer and square on, or enter the table by hand.', 'bad');
+        return;
+      }
+      devState = 'review';
+      startDraft(t);
+      renderDev();
+      var notes = [];
+      if (raw && raw.notes) notes.push(String(raw.notes));
+      t.issues.forEach(function (i) { notes.push(i); });
+      setMsg('#dev-msg', 'Read ' + t.rows.length + ' rows.' + (notes.length ? ' ' + notes.join(' ') : ''), notes.length ? 'warn' : '');
+    }).catch(function (e) {
+      busy = false; devState = prev;
+      renderDev();
+      if (e && e.code === 'cancelled') { setMsg('#dev-msg', ''); return; }
+      setMsg('#dev-msg', errCopy(e), 'bad');
+      renderDev();
+    });
+  }
+
+  $('#dev-stop').addEventListener('click', function () { if (ctl) ctl.abort(); });
+  $('#dev-manual').addEventListener('click', function () {
+    startDraft({ basis: 'compass', rows: [] });
+    devState = 'review';
+    setMsg('#dev-msg', '');
+    renderDev();
+    $('#dr-h-0').focus();
+  });
+  $('#dev-edit').addEventListener('click', function () {
+    startDraft(devTable);
+    devState = 'review';
+    setMsg('#dev-msg', '');
+    renderDev();
+  });
+  document.querySelectorAll('[data-step]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var step = Number(b.getAttribute('data-step')), rows = [], hd;
+      for (hd = 0; hd < 360; hd += step) rows.push({ h: String(hd), mag: '', dir: 'E', pre: true });
+      draft.rows = rows;
+      renderDraft(false);
+      setMsg('#dev-msg', 'Headings filled in. Type the deviation for each one.');
+      $('#dr-m-0').focus();
+    });
+  });
+  $('#dev-add').addEventListener('click', function () {
+    draft.rows.push({ h: '', mag: '', dir: 'E' });
+    renderDraft(true);
+  });
+  $('#dev-keep').addEventListener('click', function () {
+    changing = false; devState = 'saved'; setMsg('#dev-msg', ''); renderDev();
+  });
+  $('#dev-discard').addEventListener('click', function () {
+    changing = false;
+    devState = devTable ? 'saved' : 'empty';
+    setMsg('#dev-msg', '');
+    renderDev();
+  });
+  document.querySelectorAll('input[name="dev-basis"]').forEach(function (r) {
+    r.addEventListener('change', function () { draft.basis = checked('dev-basis'); renderDraft(false); });
+  });
+  $('#dev-save').addEventListener('click', function () {
+    var v = validateDraft(draft.rows);
+    if (v.errors.length) { setMsg('#dev-msg', v.errors.join(' '), 'bad'); return; }
+    var t = { basis: draft.basis, rows: v.rows };
+    $('#dev-save').disabled = true;
+    saveTable(t).then(function (where) {
+      $('#dev-save').disabled = false;
+      devTable = t;
+      savedWhere = where;
+      changing = false;
+      devState = 'saved';
+      renderDev();
+      var m = where === 'account' ? 'Saved to your account.' : where === 'device' ? 'Saved on this device only.' : 'Could not save. The table is used for this visit only.';
+      setMsg('#dev-msg', m + (v.warnings.length ? ' ' + v.warnings.join(' ') : ''), where === 'account' && !v.warnings.length ? '' : 'warn');
+      renderCourse();
+    });
+  });
+  $('#dev-paste-btn').addEventListener('click', function () {
+    pasteOpen = true;
+    setMsg('#dev-msg', '');
+    renderDev();
+    $('#dev-paste').focus();
+  });
+  $('#dev-paste-cancel').addEventListener('click', function () {
+    pasteOpen = false;
+    setMsg('#dev-msg', '');
+    renderDev();
+  });
+  $('#dev-paste-go').addEventListener('click', function () {
+    var p = parseScannedTable($('#dev-paste').value);
+    var t = cleanTable({
+      basis: p.basis,
+      rows: p.rows.map(function (r) { return { heading: r.h, deviation: r.dir === 'W' ? -r.mag : r.mag }; })
+    });
+    if (t.rows.length < 2) {
+      setMsg('#dev-msg', 'No table rows could be found in that text. Scan again closer and square on, or enter the table by hand.', 'bad');
+      return;
+    }
+    pasteOpen = false;
+    devState = 'review';
+    startDraft(t);
+    renderDev();
+    var notes = ['Read ' + t.rows.length + ' rows.'];
+    if (p.noDir) notes.push(p.noDir + ' rows had no E or W and are set to E. Check them.');
+    if (p.skipped) notes.push(p.skipped + ' lines could not be used.');
+    t.issues.forEach(function (i) { notes.push(i); });
+    setMsg('#dev-msg', notes.join(' ') + ' Check every row against your card, then save.', 'warn');
+  });
+  bindFile('#dev-file', readDevPhotos);
+
+  /* ---------- Variation ---------- */
+  var curVar = null;
+
+  function renderVar() {
+    var deg = readField($('#var-deg'), 'Degrees', 180, true);
+    var min = readField($('#var-min'), 'Minutes', 60, true);
+    var y0 = readField($('#var-y0'), 'Chart year', 3000, false);
+    var y1 = readField($('#var-y1'), 'Year now', 3000, false);
+    var rate = readField($('#var-rate'), 'Annual change', 60, false);
+    var bad = firstBad([deg, min, y0, y1, rate]);
+    curVar = null;
+    if (bad || deg.state === 'empty') {
+      setText('#var-big', '—');
+      setText('#var-sub', 'Take a photo of the chart variation, or enter it by hand.');
+      setMsg('#var-msg', bad ? bad.msg : '', bad ? 'bad' : '');
+      renderCourse(); syncObs();
+      return;
+    }
+    var years = y0.state === 'ok' && y1.state === 'ok' ? y1.value - y0.value : 0;
+    if (years < 0) {
+      setText('#var-big', '—');
+      setText('#var-sub', '');
+      setMsg('#var-msg', 'The year now is before the chart year.', 'bad');
+      renderCourse(); syncObs();
+      return;
+    }
+    var p = {
+      deg: deg.value, min: min.state === 'ok' ? min.value : 0, dir: checked('var-dir'),
+      y0: y0.state === 'ok' ? y0.value : null, y1: y1.state === 'ok' ? y1.value : null,
+      rate: rate.state === 'ok' ? rate.value : null, toward: checked('var-toward')
+    };
+    var nv = variationNow(p);
+    curVar = nv;
+    var zero = Math.round(Math.abs(nv) * 60) === 0;
+    setText('#var-big', zero ? '0°00′' : fmtDM(nv) + ' ' + dirOf(nv));
+    var charted = fmtDM(signedValue(p.deg + p.min / 60, p.dir)) + ' ' + p.dir;
+    var sub = Math.abs(nv).toFixed(2) + '° ' + (zero ? '' : dirOf(nv));
+    if (years > 0 && p.rate && p.toward) sub += '. Charted ' + charted + ' in ' + p.y0 + ', moved ' + years + ' years at ' + p.rate + '′ a year toward ' + p.toward + '.';
+    else sub += '. Charted value, no annual change applied.';
+    setText('#var-sub', sub);
+    var warn = '';
+    if (p.y0 === null) warn = 'Chart year is missing, so no annual change is applied.';
+    else if (p.rate === null) warn = 'Annual change is missing, so the charted value is used as printed.';
+    else if (!p.toward) warn = 'Choose which way the annual change moves, E or W. Until then the charted value is used as printed.';
+    else if (years > 20) warn = 'The charted value is over 20 years old. Check it against ECDIS or a current chart.';
+    setMsg('#var-msg', warn, warn ? 'warn' : '');
+    renderCourse(); syncObs();
+  }
+  function syncObs() {
+    if (curVar === null) return;
+    $('#ob-var').value = Math.abs(curVar).toFixed(2);
+    $('#ob-vdir-' + dirOf(curVar)).checked = true;
+    renderObs();
+  }
+  function fillVariation(c) {
+    $('#var-deg').value = c.deg;
+    $('#var-min').value = c.min;
+    $('#var-dir-' + c.dir).checked = true;
+    $('#var-y0').value = c.year === null ? '' : c.year;
+    $('#var-rate').value = c.rate === null ? '' : c.rate;
+    $('#var-toward-E').checked = c.toward === 'E';
+    $('#var-toward-W').checked = c.toward === 'W';
+  }
+  function readVarPhoto(files) {
+    busy = true;
+    $('#var-stop').hidden = false;
+    setMsg('#var-read-msg', 'Reading the photo. This can take up to a minute.');
+    applyPhotoState();
+    askWithPhotos(VAR_PROMPT, files.slice(0, 1)).then(function (raw) {
+      busy = false; $('#var-stop').hidden = true; applyPhotoState();
+      var c = cleanVariation(raw);
+      if (!c) { setMsg('#var-read-msg', 'No variation could be read. Retake the photo closer, or enter it by hand.', 'bad'); return; }
+      fillVariation(c);
+      $('#var-pill').hidden = false;
+      var notes = [];
+      if (c.notes) notes.push(c.notes);
+      if (c.year === null) notes.push('No chart year was found. Enter it.');
+      if (c.rate === null || c.toward === null) notes.push('No annual change was found. Enter it.');
+      setMsg('#var-read-msg', notes.length ? notes.join(' ') : 'Read from the photo. Check it against the chart.', notes.length ? 'warn' : '');
+      renderVar();
+    }).catch(function (e) {
+      busy = false; $('#var-stop').hidden = true;
+      if (e && e.code === 'cancelled') { setMsg('#var-read-msg', ''); applyPhotoState(); return; }
+      setMsg('#var-read-msg', errCopy(e), 'bad');
+      applyPhotoState();
+    });
+  }
+  $('#var-stop').addEventListener('click', function () { if (ctl) ctl.abort(); });
+  bindFile('#var-file', readVarPhoto);
+  $('#panel-var').addEventListener('input', function (ev) {
+    if (ev.target && ev.target.type === 'file') return;
+    $('#var-pill').hidden = true;
+    renderVar();
+  });
+
+  /* ---------- Course and results ---------- */
+  function ladderHTML(r, known, v, d) {
+    var k = { T: 0, M: 2, C: 4 }[known];
+    function course(i, code, name, key) {
+      var given = i === k ? ' <span class="tag">Given</span>' : '';
+      return '<div class="course' + (i === k ? ' is-known' : '') + '"><span class="code">' + code +
+        '</span><span class="name">' + name + given + '</span><span class="val">' + fmtCourse(r[key]) + '</span></div>';
+    }
+    function corr(i, name, s) {
+      var down = i > k;
+      var delta = down ? -s : s;
+      return '<div class="corr"><span class="arrow">' + (down ? '↓' : '↑') + '</span><span>' + name + ' ' + fmtSigned(s) +
+        '</span><span class="delta">' + sign(delta) + Math.abs(round1(delta)).toFixed(1) + '°</span></div>';
+    }
+    return course(0, 'T', 'True', 'T') + corr(1, 'Variation', v) + course(2, 'M', 'Magnetic', 'M') +
+      corr(3, 'Deviation', d) + course(4, 'C', 'Compass', 'C');
+  }
+  function blankCourse(keepVar) {
+    setText('#st-var', keepVar ? fmtSigned(round1(curVar)) : '—');
+    setText('#st-var-sub', keepVar ? fmtDM(curVar) : '');
+    setText('#st-dev', '—'); setText('#st-dev-sub', '');
+    setText('#st-cc', '—'); setText('#st-cc-sub', '');
+    setText('#st-err', '—'); setText('#st-err-sub', '');
+    $('#cr-ladder').textContent = '';
+    setText('#cr-working', '');
+  }
+  function workingText(r, mode, known) {
+    if (mode === 'manual') return 'Deviation entered by hand.';
+    var b = r.bracket, tag = r.basis === 'magnetic' ? 'M' : 'C';
+    var t = 'Deviation at ' + fmtCourse(r.heading) + ' ' + tag + ': ';
+    t += b.exact ? 'taken from the card row ' + fmtCourse(b.h0) + ' ' + tag + ', ' + fmtSigned(b.d0) + '.'
+      : 'between ' + fmtCourse(b.h0) + ' ' + tag + ' (' + fmtSigned(b.d0) + ') and ' + fmtCourse(b.h1) + ' ' + tag + ' (' + fmtSigned(b.d1) + '), about ' + fmtSigned(b.dev) + '.';
+    if (r.basis === 'compass' && known !== 'C') t += ' The card is by compass heading, so the compass course is found so that Compass + Deviation = Magnetic.';
+    if (r.basis === 'magnetic' && known === 'C') t += ' The card is by magnetic heading, so the magnetic course is found so that Magnetic − Deviation = Compass.';
+    return t;
+  }
+  function renderCourse() {
+    var known = checked('cr-known');
+    var labels = { T: 'True course', C: 'Compass course', M: 'Magnetic course' };
+    setText('#cr-course-label', labels[known] + ' (°)');
+    var c = readField($('#cr-course'), 'Course', 360, false);
+    var mf = readField($('#cr-mdev'), 'Deviation', 45, true);
+    if (c.state === 'bad' || mf.state === 'bad') {
+      blankCourse(curVar !== null);
+      setMsg('#cr-msg', (c.state === 'bad' ? c : mf).msg, 'bad');
+      return;
+    }
+    if (curVar === null) {
+      blankCourse(false);
+      setMsg('#cr-msg', 'Add the chart variation above to get a result.', '');
+      return;
+    }
+    if (c.state === 'empty') {
+      blankCourse(true);
+      setMsg('#cr-msg', 'Enter the ' + labels[known].toLowerCase() + '.', '');
+      return;
+    }
+    var v = round1(curVar), r, mode, d;
+    if (mf.state === 'ok') {
+      d = round1(signedValue(mf.value, checked('cr-mdir')));
+      r = convertCourse(known, c.value, v, d);
+      r.v = v; r.d = d; r.error = round1(v + d);
+      mode = 'manual';
+    } else if (devTable) {
+      r = convertWithTable(known, c.value, v, devTable);
+      mode = 'table';
+      if (!r) {
+        blankCourse(true);
+        setMsg('#cr-msg', 'No compass course fits this table. Check the table for a misread row.', 'bad');
+        return;
+      }
+    } else {
+      blankCourse(true);
+      var extra = known === 'T' ? ' Magnetic course is ' + fmtCourse(c.value - v) + '.' : known === 'M' ? ' True course is ' + fmtCourse(c.value + v) + '.' : '';
+      setMsg('#cr-msg', 'Save your deviation table to get deviation and compass course.' + extra, 'warn');
+      return;
+    }
+    setText('#st-var', fmtSigned(r.v));
+    setText('#st-var-sub', fmtDM(r.v));
+    setText('#st-dev', fmtSigned(r.d));
+    setText('#st-dev-sub', mode === 'manual' ? 'entered by hand' : (r.bracket.exact ? 'from the card' : 'interpolated'));
+    setText('#st-cc', fmtCourse(r.C));
+    setText('#st-cc-sub', 'True ' + fmtCourse(r.T));
+    setText('#st-err', fmtSigned(r.error));
+    var e = round1(r.error);
+    setText('#st-err-sub', e === 0 ? 'No error' : 'True = Compass ' + (e > 0 ? '+' : '−') + ' ' + Math.abs(e).toFixed(1) + '°');
+    $('#cr-ladder').innerHTML = ladderHTML(r, known, r.v, r.d);
+    setText('#cr-working', workingText(r, mode, known));
+    var warn = '';
+    if (r.multiple) warn = 'More than one compass course fits this table. Check the table for a misread row.';
+    else if (Math.abs(r.d) > 15) warn = 'Deviation over 15° is large. Check the card.';
+    else if (mode === 'manual') warn = 'Using the deviation you entered, not the saved table.';
+    setMsg('#cr-msg', warn, warn ? 'warn' : '');
+  }
+  $('#panel-course').addEventListener('input', renderCourse);
+
+  /* ---------- Error from a bearing ---------- */
+  function obsSub(e, mag) {
+    var r = round1(e);
+    var who = mag ? 'Compass' : 'Gyro';
+    if (r === 0) return 'No error.';
+    return who + ' reads ' + (r > 0 ? 'low' : 'high') + '. True = ' + who + ' ' + (r > 0 ? '+' : '−') + ' ' + Math.abs(r).toFixed(1) + '°.';
+  }
+  function renderObs() {
+    var mag = checked('ob-kind') === 'mag';
+    $('#ob-var-field').hidden = !mag;
+    $('#ob-dev-box').hidden = !mag;
+    setText('#ob-obs-label', (mag ? 'Compass bearing, observed' : 'Gyro bearing, observed') + ' (°)');
+    setText('#ob-err-k', mag ? 'Total compass error' : 'Gyro error');
+    var t = readField($('#ob-true'), 'True bearing', 360, false);
+    var o = readField($('#ob-obs'), 'Observed bearing', 360, false);
+    var vf = mag ? readField($('#ob-var'), 'Variation', 180, true) : { state: 'ok', value: 0 };
+    var bad = firstBad([t, o, vf]);
+    if (bad || t.state === 'empty' || o.state === 'empty') {
+      setText('#ob-err', '—'); setText('#ob-err-sub', '');
+      setText('#ob-dev', '—'); setText('#ob-dev-sub', '');
+      setMsg('#ob-msg', bad ? bad.msg : '', bad ? 'bad' : '');
+      return;
+    }
+    var e = observedError(t.value, o.value);
+    setText('#ob-err', fmtSigned(e));
+    setText('#ob-err-sub', obsSub(e, mag));
+    if (mag) {
+      if (vf.state === 'empty') {
+        setText('#ob-dev', '—');
+        setText('#ob-dev-sub', 'Enter the variation to find deviation.');
+      } else {
+        var dv = e - signedValue(vf.value, checked('ob-vdir'));
+        setText('#ob-dev', fmtSigned(dv));
+        setText('#ob-dev-sub', "Error minus variation. Valid only on the ship's head at the time of the observation.");
+      }
+    }
+    var big = Math.abs(round1(e)) > 5;
+    setMsg('#ob-msg', big ? 'Large error. Recheck both bearings and the time before logging.' : '', big ? 'warn' : '');
+  }
+  $('#panel-obs').addEventListener('input', renderObs);
+
+  /* ---------- Views ---------- */
+  function show(name) {
+    $('#view-hub').hidden = name !== 'hub';
+    $('#view-compass').hidden = name !== 'compass';
+    $('#view-settings').hidden = name !== 'settings';
+    window.scrollTo(0, 0);
+    var h = name === 'hub' ? $('#hub-title') : name === 'settings' ? $('#settings-title') : $('#compass-title');
+    h.focus({ preventScroll: true });
+  }
+  function go(name) {
+    try { location.hash = name === 'hub' ? '' : name; } catch (e) { /* hash may be blocked */ }
+    show(name);
+  }
+  function route() {
+    var h = '';
+    try { h = (location.hash || '').replace('#', ''); } catch (e) { h = ''; }
+    show(h === 'compass' ? 'compass' : h === 'settings' ? 'settings' : 'hub');
+  }
+  document.querySelectorAll('[data-open]').forEach(function (b) {
+    b.addEventListener('click', function () { go(b.getAttribute('data-open')); });
+  });
+  $('#back').addEventListener('click', function () { go('hub'); });
+  $('#back-settings').addEventListener('click', function () { go('hub'); });
+  $('#top-ai').addEventListener('click', function () { go('settings'); });
+  $('#top-dev').addEventListener('click', function () {
+    go('compass');
+    if (busy) return;
+    if (devState === 'saved') { changing = true; devState = 'empty'; setMsg('#dev-msg', ''); renderDev(); }
+    else if (devState === 'review') { /* already editing */ }
+    $('#panel-dev').scrollIntoView({ block: 'start' });
+  });
+
+  /* ---------- AI settings ---------- */
+  function saveModel() {
+    var m = $('#model-input').value.trim();
+    if (m && /^[a-z0-9.\-]+$/i.test(m)) {
+      gemModel = m;
+      try { localStorage.setItem('bridge-desk-gemini-model', m); } catch (e) { /* optional */ }
+    }
+  }
+  $('#model-input').value = gemModel;
+  function renderKey() {
+    $('#key-pill').textContent = gemKey ? 'Key saved' : 'Not set';
+    $('#key-pill').classList.toggle('is-on', !!gemKey);
+    $('#key-remove').hidden = !gemKey;
+    $('#key-test').hidden = !gemKey;
+  }
+  $('#key-save').addEventListener('click', function () {
+    var v = $('#key-input').value.trim();
+    if (v.length < 20 || /\s/.test(v)) { setMsg('#key-msg', 'That does not look like a key. Copy the whole key from Google AI Studio.', 'bad'); return; }
+    gemKey = v;
+    saveModel();
+    try { localStorage.setItem('bridge-desk-gemini', v); setMsg('#key-msg', 'Key saved on this device. Tap Test key.'); }
+    catch (e) { setMsg('#key-msg', 'Key set for this visit only. This browser would not store it.', 'warn'); }
+    $('#key-input').value = '';
+    updatePhotoOK(); applyPhotoState(); renderDev(); renderKey();
+  });
+  $('#key-remove').addEventListener('click', function () {
+    gemKey = '';
+    try { localStorage.removeItem('bridge-desk-gemini'); } catch (e) { /* optional */ }
+    updatePhotoOK(); applyPhotoState(); renderDev(); renderKey();
+    setMsg('#key-msg', 'Key removed.');
+  });
+  $('#key-test').addEventListener('click', function () {
+    saveModel();
+    setMsg('#key-msg', 'Testing…');
+    gemRun([{ text: 'Reply with this JSON and nothing else: {"ok":true}' }], undefined).then(function (j) {
+      setMsg('#key-msg', /true/.test(gemText(j)) ? 'Works. Photo reading is on.' : 'Google answered but not as expected. Try scanning a card.', /true/.test(gemText(j)) ? '' : 'warn');
+    }).catch(function (e) {
+      setMsg('#key-msg', e && e.code === 'gem_key' ? 'Google did not accept this key. Check it was copied in full.' : e && e.code === 'rate_limited' ? 'Key accepted, but the free limit is reached for now. Try later.' : errCopy(e), e && e.code === 'rate_limited' ? 'warn' : 'bad');
+    });
+  });
+  renderKey();
+  $('#home').addEventListener('click', function () { go('hub'); });
+  window.addEventListener('hashchange', route);
+
+  /* ---------- Night mode ---------- */
+  function setNight(on) {
+    var root = document.documentElement;
+    if (on) root.setAttribute('data-mode', 'night'); else root.removeAttribute('data-mode');
+    $('#night').setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  $('#night').addEventListener('click', function () {
+    var on = $('#night').getAttribute('aria-pressed') !== 'true';
+    setNight(on);
+    try { localStorage.setItem('bridge-desk-night', on ? '1' : '0'); } catch (e) { /* optional */ }
+  });
+  try { if (localStorage.getItem('bridge-desk-night') === '1') setNight(true); } catch (e) { /* optional */ }
+
+  /* ---------- UTC clock ---------- */
+  function tick() { $('#utc').textContent = new Date().toISOString().slice(11, 19) + ' UTC'; }
+  tick();
+  setInterval(tick, 1000);
+
+  /* ---------- Start ---------- */
+  updatePhotoOK();
+  $('#var-y1').value = new Date().getFullYear();
+  renderVar();
+  renderObs();
+  renderCourse();
+  renderDev();
+  route();
+
+  // Capabilities arrive after first paint. The page works by hand without them.
+  if (window.claude && window.claude.use) {
+    window.claude.use('sample').then(function (s) {
+      sample = s;
+      if (!s) return null;
+      return s.limits().then(function (lim) {
+        if (lim && lim.images) {
+          claudePhotos = true;
+          claudeMax = lim.images.maxCount || 1;
+          var accept = (lim.images.mediaTypes || []).join(',');
+          if (accept) { $('#var-file').accept = accept; $('#dev-file').accept = accept; }
+        }
+      }).catch(function () { /* no images */ });
+    }).catch(function () { sample = null; }).then(function () {
+      capsReady = true;
+      updatePhotoOK();
+      applyPhotoState(); renderDev();
+    });
+  } else {
+    capsReady = true;
+    updatePhotoOK();
+    applyPhotoState(); renderDev();
+  }
+  loadTable().then(function (t) {
+    devTable = t;
+    devState = t ? 'saved' : 'empty';
+    renderDev();
+    renderCourse();
+  });
+})();
+</script>
+
+</body>
+</html>
