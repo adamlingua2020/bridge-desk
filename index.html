@@ -605,6 +605,155 @@ details[open] > summary { margin-bottom: 10px; }
             <div class="results" aria-live="polite">
               <div class="readout">
                 <span class="k">Variation now</span>
+                <span: 8px; background: var(--surface-2); }
+.stat .k { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.stat .big { font: 600 34px/1 var(--font-display); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat .sub { font-size: 13px; color: var(--muted); }
+.stat.is-main { border-color: var(--accent); }
+.stat.is-main .big { color: var(--accent-text); }
+details { margin-top: 14px; }
+summary { cursor: pointer; font: 500 13px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); min-height: 32px; display: flex; align-items: center; }
+details[open] > summary { margin-bottom: 10px; }
+.working { display: grid; gap: 12px; }
+.working p { font-size: 14px; color: var(--muted); }
+
+.ladder { display: grid; gap: 2px; align-content: start; min-width: 0; }
+.course { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: baseline; gap: 8px 10px; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; }
+.course.is-known { border-color: var(--accent); }
+.course .code { font: 600 28px/1 var(--font-display); color: var(--muted); }
+.course.is-known .code { color: var(--accent-text); }
+.course .name { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.course .val { font: 500 26px/1 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tag { font: 500 10px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 6px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
+.corr { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: baseline; gap: 8px 10px; padding: 5px 14px; color: var(--muted); font-size: 13px; }
+.corr .arrow { font: 500 15px var(--font-mono); text-align: center; }
+.corr .delta { font: 500 14px var(--font-mono); color: var(--fg); white-space: nowrap; }
+
+.readout { display: grid; gap: 4px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.readout .k { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.readout .big { font: 600 40px/1 var(--font-display); letter-spacing: 0.02em; color: var(--accent-text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.readout .sub { color: var(--muted); font-size: 14px; }
+.results { display: grid; gap: 12px; align-content: start; min-width: 0; }
+
+/* Deviation table editor */
+.devrows { display: grid; gap: 6px; margin-block: 10px 12px; }
+.devrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 64px 44px; gap: 6px; align-items: center; }
+.devrow.is-head { font: 500 11px/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.icon-btn { min-height: 44px; min-width: 44px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; font-size: 20px; line-height: 1; color: var(--muted); }
+.icon-btn:hover { border-color: var(--alert); color: var(--alert); }
+.devtable { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 14px; max-height: 320px; overflow-y: auto; font: 500 14px var(--font-mono); font-variant-numeric: tabular-nums; }
+.devtable span { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <button class="brand" id="home" type="button">Bridge Desk</button>
+    <div class="topbar-right">
+      <button class="btn" id="top-dev" type="button">Deviation card</button>
+      <button class="btn" id="top-ai" type="button">AI</button>
+      <span class="clock" id="utc" aria-label="UTC time">--:--:-- UTC</span>
+      <button class="btn" id="night" type="button" aria-pressed="false">Night</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hub -->
+    <section id="view-hub" aria-labelledby="hub-title">
+      <div class="hub-head">
+        <h1 id="hub-title" tabindex="-1">Duties</h1>
+        <p class="muted">Each tile opens one focused tool.</p>
+      </div>
+      <div class="tiles">
+        <button class="tile" type="button" data-open="compass">
+          <svg class="glyph" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="19"/><path d="M24 9v4M24 35v4M9 24h4M35 24h4"/><path d="M30 18l-4 8-8 4 4-8z"/></svg>
+          <span class="tile-name">Compass error</span>
+          <span class="tile-desc">Photo of the chart variation and your deviation card in. Variation, deviation, compass course and error out.</span>
+          <span class="chip chip-ready">Ready</span>
+        </button>
+        <div class="tile is-planned">
+          <svg class="glyph" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 38c10 0 6-14 16-14s6-14 16-14" stroke-dasharray="2 4"/><circle cx="8" cy="38" r="3"/><circle cx="24" cy="24" r="3"/><circle cx="40" cy="10" r="3"/></svg>
+          <span class="tile-name">Passage planning</span>
+          <span class="tile-desc">Legs, distances, ETAs, cross-track limits and under-keel checks.</span>
+          <span class="chip">Planned</span>
+        </div>
+        <div class="tile is-planned">
+          <svg class="glyph" viewBox="0 0 48 48" aria-hidden="true"><path d="M13 15h22l-2 25H15z"/><path d="M10 15h28M19 15v-4h10v4"/><path d="M21 21v13M27 21v13"/></svg>
+          <span class="tile-name">Garbage and MARPOL</span>
+          <span class="tile-desc">Annex V discharge rules by area and category. Garbage Record Book entries.</span>
+          <span class="chip">Planned</span>
+        </div>
+        <div class="tile is-planned">
+          <svg class="glyph" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="17"/><path d="M24 13v11l7 5"/></svg>
+          <span class="tile-name">Watchkeeping</span>
+          <span class="tile-desc">Handover checklist, COLREGs quick reference, bridge log wording.</span>
+          <span class="chip">Planned</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Compass error -->
+    <section id="view-compass" hidden aria-labelledby="compass-title">
+      <div class="tool-head">
+        <button class="btn" type="button" id="back">‹ Duties</button>
+        <h1 id="compass-title" tabindex="-1">Compass error</h1>
+        <p class="lede">Save your deviation card once. Then photograph the chart variation, enter the course, and read off variation, deviation, compass course and error.</p>
+      </div>
+
+      <div class="panels">
+        <!-- Variation -->
+        <section class="panel" id="panel-var" aria-labelledby="h-var">
+          <div class="panel-head">
+            <h2 id="h-var">Variation</h2>
+            <span class="pill" id="var-pill" hidden>Read from photo</span>
+          </div>
+          <div class="split">
+            <div class="form">
+              <div class="actions">
+                <input class="vh" type="file" id="var-file" accept="image/*" hidden>
+                <input class="vh" type="file" id="var-cam" accept="image/*" capture="environment" hidden>
+                <label class="btn btn-primary" id="var-cam-btn" for="var-cam" hidden>Take photo of chart</label>
+                <label class="btn" id="var-photo-btn" for="var-file" hidden>Choose from gallery</label>
+                <button class="btn" type="button" id="var-stop" hidden>Stop</button>
+              </div>
+              <p class="note" id="var-photo-note">Photograph the compass rose with the year and annual change in view. Check what was read against the chart.</p>
+              <p class="msg" id="var-read-msg" role="status"></p>
+              <div class="field">
+                <label for="var-deg">Charted variation</label>
+                <div class="pair">
+                  <input type="number" id="var-deg" inputmode="decimal" step="any" min="0" aria-label="Degrees" placeholder="deg" autocomplete="off">
+                  <input type="number" id="var-min" inputmode="decimal" step="any" min="0" aria-label="Minutes" placeholder="min" autocomplete="off">
+                  <div class="seg" role="radiogroup" aria-label="Charted variation direction">
+                    <input type="radio" id="var-dir-E" name="var-dir" value="E"><label for="var-dir-E">E</label>
+                    <input type="radio" id="var-dir-W" name="var-dir" value="W" checked><label for="var-dir-W">W</label>
+                  </div>
+                </div>
+              </div>
+              <div class="grid2">
+                <div class="field">
+                  <label for="var-y0">Year on chart</label>
+                  <input type="number" id="var-y0" inputmode="numeric" step="1" min="0" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="var-y1">Year now</label>
+                  <input type="number" id="var-y1" inputmode="numeric" step="1" min="0" autocomplete="off">
+                </div>
+              </div>
+              <div class="field">
+                <label for="var-rate">Annual change, minutes a year, toward</label>
+                <div class="pair">
+                  <input type="number" id="var-rate" inputmode="decimal" step="any" min="0" autocomplete="off">
+                  <div class="seg" role="radiogroup" aria-label="Annual change direction">
+                    <input type="radio" id="var-toward-E" name="var-toward" value="E"><label for="var-toward-E">E</label>
+                    <input type="radio" id="var-toward-W" name="var-toward" value="W"><label for="var-toward-W">W</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="results" aria-live="polite">
+              <div class="readout">
+                <span class="k">Variation now</span>
                 <span class="big" id="var-big">—</span>
                 <span class="sub" id="var-sub">Take a photo of the chart variation, or enter it by hand.</span>
               </div>
